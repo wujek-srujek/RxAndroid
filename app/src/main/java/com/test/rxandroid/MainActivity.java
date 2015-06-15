@@ -5,8 +5,6 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.app.Activity;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
@@ -16,8 +14,10 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import rx.Observable;
+import rx.android.schedulers.AndroidSchedulers;
 import rx.android.view.ViewObservable;
 import rx.functions.Action1;
 import rx.functions.Func0;
@@ -64,17 +64,6 @@ public class MainActivity extends Activity {
             }
         });
 
-        final PublishSubject<Object> windowClosePublishSubject = PublishSubject.create();
-        final Handler handler = new Handler(Looper.getMainLooper());
-        final Runnable r = new Runnable() {
-
-            @Override
-            public void run() {
-                Log.d(TAG, "will emit closing item");
-                windowClosePublishSubject.onNext("now!");
-            }
-        };
-
         ViewObservable
                 .bindView(viewGroup, touchPublishSubject)
                 .filter(new Func1<MotionEvent, Boolean>() {
@@ -88,12 +77,6 @@ public class MainActivity extends Activity {
 
                     @Override
                     public void call(MotionEvent motionEvent) {
-                        // restart the timer
-                        Log.d(TAG, "cancelling closing");
-                        handler.removeCallbacks(r);
-                        Log.d(TAG, "scheduling closing");
-                        handler.postDelayed(r, 1000L);
-
                         // show the touch
                         float x = motionEvent.getX();
                         float y = motionEvent.getY();
@@ -125,7 +108,8 @@ public class MainActivity extends Activity {
                     @Override
                     public Observable<?> call() {
                         Log.d(TAG, "creating buffer closing selector");
-                        return windowClosePublishSubject
+                        return touchPublishSubject
+                                .debounce(1L, TimeUnit.SECONDS)
                                 .doOnNext(new Action1<Object>() {
 
                                     @Override
@@ -135,6 +119,7 @@ public class MainActivity extends Activity {
                                 });
                     }
                 })
+                .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(new Action1<List<MotionEvent>>() {
 
                     @Override
