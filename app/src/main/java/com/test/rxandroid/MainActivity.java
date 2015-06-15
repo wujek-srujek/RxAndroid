@@ -17,12 +17,14 @@ import java.util.concurrent.TimeUnit;
 
 import rx.android.schedulers.AndroidSchedulers;
 import rx.android.view.ViewObservable;
-import rx.functions.Action1;
-import rx.functions.Func1;
 import rx.subjects.PublishSubject;
 
 
 public class MainActivity extends Activity {
+
+    private ViewGroup viewGroup;
+
+    private TextView touchCountIndicator;
 
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
@@ -44,85 +46,69 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_main);
-        final TextView touchCountIndicator = (TextView) findViewById(R.id.touchCountIndicator);
+        touchCountIndicator = (TextView) findViewById(R.id.touchCountIndicator);
 
-        final PublishSubject<MotionEvent> touchPublishSubject = PublishSubject.create();
+        PublishSubject<MotionEvent> touchPublishSubject = PublishSubject.create();
 
-        final ViewGroup viewGroup = (ViewGroup) findViewById(android.R.id.content);
-        viewGroup.setOnTouchListener(new View.OnTouchListener() {
+        viewGroup = (ViewGroup) findViewById(android.R.id.content);
+        viewGroup.setOnTouchListener((v, event) -> {
+            touchPublishSubject.onNext(event);
 
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                touchPublishSubject.onNext(event);
-
-                return true;
-            }
+            return true;
         });
 
         ViewObservable
                 .bindView(viewGroup, touchPublishSubject)
-                .filter(new Func1<MotionEvent, Boolean>() {
-
-                    @Override
-                    public Boolean call(MotionEvent motionEvent) {
-                        return motionEvent.getAction() == MotionEvent.ACTION_DOWN;
-                    }
-                })
-                .doOnNext(new Action1<MotionEvent>() {
-
-                    @Override
-                    public void call(MotionEvent motionEvent) {
-                        // show the touch
-                        float x = motionEvent.getX();
-                        float y = motionEvent.getY();
-
-                        final ImageView touchIndicator = new ImageView(MainActivity.this);
-                        touchIndicator.setImageResource(R.drawable.touch);
-                        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(10, 10);
-                        params.leftMargin = (int) (x - 5);
-                        params.topMargin = (int) (y - 5);
-                        viewGroup.addView(touchIndicator, params);
-
-                        touchIndicator
-                                .animate()
-                                .alpha(0F)
-                                .scaleXBy(25F)
-                                .scaleYBy(25F)
-                                .setDuration(1000L)
-                                .setListener(new AnimatorListenerAdapter() {
-
-                                    @Override
-                                    public void onAnimationEnd(Animator animation) {
-                                        viewGroup.removeView(touchIndicator);
-                                    }
-                                });
-                    }
-                })
+                .filter(motionEvent -> motionEvent.getAction() == MotionEvent.ACTION_DOWN)
+                .doOnNext(this::showTouch)
                 .buffer(3L, TimeUnit.SECONDS)
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Action1<List<MotionEvent>>() {
+                .subscribe(this::showTouchCount);
+    }
+
+    private void showTouch(MotionEvent motionEvent) {
+        float x = motionEvent.getX();
+        float y = motionEvent.getY();
+
+        ImageView touchIndicator = new ImageView(MainActivity.this);
+        touchIndicator.setImageResource(R.drawable.touch);
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(10, 10);
+        params.leftMargin = (int) (x - 5);
+        params.topMargin = (int) (y - 5);
+        viewGroup.addView(touchIndicator, params);
+
+        touchIndicator
+                .animate()
+                .alpha(0F)
+                .scaleXBy(25F)
+                .scaleYBy(25F)
+                .setDuration(1000L)
+                .setListener(new AnimatorListenerAdapter() {
 
                     @Override
-                    public void call(List<MotionEvent> motionEvents) {
-                        // show number of touch downs
-                        touchCountIndicator.setText("" + motionEvents.size());
+                    public void onAnimationEnd(Animator animation) {
+                        viewGroup.removeView(touchIndicator);
+                    }
+                });
+    }
 
-                        touchCountIndicator
-                                .animate()
-                                .alpha(0F)
-                                .scaleXBy(15F)
-                                .scaleYBy(15F)
-                                .setDuration(1000L)
-                                .setListener(new AnimatorListenerAdapter() {
+    private void showTouchCount(List<MotionEvent> motionEvents) {
+        touchCountIndicator.setText("" + motionEvents.size());
 
-                                    @Override
-                                    public void onAnimationEnd(Animator animation) {
-                                        touchCountIndicator.setText(null);
-                                        touchCountIndicator.setAlpha(1F);
-                                        touchCountIndicator.setScaleX(1F);
-                                        touchCountIndicator.setScaleY(1F);
-                                    }
-                                });
+        touchCountIndicator
+                .animate()
+                .alpha(0F)
+                .scaleXBy(15F)
+                .scaleYBy(15F)
+                .setDuration(1000L)
+                .setListener(new AnimatorListenerAdapter() {
+
+                    @Override
+                    public void onAnimationEnd(Animator animation) {
+                        touchCountIndicator.setText(null);
+                        touchCountIndicator.setAlpha(1F);
+                        touchCountIndicator.setScaleX(1F);
+                        touchCountIndicator.setScaleY(1F);
                     }
                 });
     }
