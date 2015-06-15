@@ -5,7 +5,6 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.app.Activity;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -16,18 +15,14 @@ import android.widget.TextView;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import rx.Observable;
 import rx.android.schedulers.AndroidSchedulers;
 import rx.android.view.ViewObservable;
 import rx.functions.Action1;
-import rx.functions.Func0;
 import rx.functions.Func1;
 import rx.subjects.PublishSubject;
 
 
 public class MainActivity extends Activity {
-
-    private static final String TAG = "dupa";
 
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
@@ -103,22 +98,7 @@ public class MainActivity extends Activity {
                                 });
                     }
                 })
-                .buffer(new Func0<Observable<?>>() {
-
-                    @Override
-                    public Observable<?> call() {
-                        Log.d(TAG, "creating buffer closing selector");
-                        return Observable
-                                .timer(0L, 3L, TimeUnit.SECONDS)
-                                .doOnNext(new Action1<Object>() {
-
-                                    @Override
-                                    public void call(Object o) {
-                                        Log.d(TAG, "emitting closing item '" + o + "'");
-                                    }
-                                });
-                    }
-                })
+                .buffer(3L, TimeUnit.SECONDS)
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(new Action1<List<MotionEvent>>() {
 
