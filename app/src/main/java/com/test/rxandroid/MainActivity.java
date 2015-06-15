@@ -108,8 +108,8 @@ public class MainActivity extends Activity {
                     @Override
                     public Observable<?> call() {
                         Log.d(TAG, "creating buffer closing selector");
-                        return touchPublishSubject
-                                .debounce(1L, TimeUnit.SECONDS)
+                        return Observable
+                                .timer(0L, 3L, TimeUnit.SECONDS)
                                 .doOnNext(new Action1<Object>() {
 
                                     @Override
