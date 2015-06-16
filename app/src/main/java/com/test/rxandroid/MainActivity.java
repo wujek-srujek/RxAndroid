@@ -15,6 +15,7 @@ import android.widget.TextView;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import rx.Observable;
 import rx.android.schedulers.AndroidSchedulers;
 import rx.android.view.ViewObservable;
 import rx.subjects.PublishSubject;
@@ -59,41 +60,56 @@ public class MainActivity extends Activity {
 
         ViewObservable
                 .bindView(viewGroup, touchPublishSubject)
-                .filter(motionEvent -> motionEvent.getAction() == MotionEvent.ACTION_DOWN)
+                .filter(motionEvent -> {
+                    int action = motionEvent.getActionMasked();
+                    return action == MotionEvent.ACTION_DOWN
+                            || action == MotionEvent.ACTION_POINTER_DOWN
+                            || action == MotionEvent.ACTION_MOVE;
+                })
                 .doOnNext(this::showTouch)
+                .map(motionEvent -> MotionEvent.obtain(motionEvent))
                 .buffer(3L, TimeUnit.SECONDS)
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(this::showTouchCount);
     }
 
     private void showTouch(MotionEvent motionEvent) {
-        float x = motionEvent.getX();
-        float y = motionEvent.getY();
+        for (int i = 0; i < motionEvent.getPointerCount(); ++i) {
+            float x = motionEvent.getX(i);
+            float y = motionEvent.getY(i);
 
-        ImageView touchIndicator = new ImageView(MainActivity.this);
-        touchIndicator.setImageResource(R.drawable.touch);
-        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(10, 10);
-        params.leftMargin = (int) (x - 5);
-        params.topMargin = (int) (y - 5);
-        viewGroup.addView(touchIndicator, params);
+            ImageView touchIndicator = new ImageView(MainActivity.this);
+            touchIndicator.setImageResource(R.drawable.touch);
+            FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(10, 10);
+            params.leftMargin = (int) (x - 5);
+            params.topMargin = (int) (y - 5);
+            viewGroup.addView(touchIndicator, params);
 
-        touchIndicator
-                .animate()
-                .alpha(0F)
-                .scaleXBy(25F)
-                .scaleYBy(25F)
-                .setDuration(1000L)
-                .setListener(new AnimatorListenerAdapter() {
+            touchIndicator
+                    .animate()
+                    .alpha(0F)
+                    .scaleXBy(25F)
+                    .scaleYBy(25F)
+                    .setDuration(1000L)
+                    .setListener(new AnimatorListenerAdapter() {
 
-                    @Override
-                    public void onAnimationEnd(Animator animation) {
-                        viewGroup.removeView(touchIndicator);
-                    }
-                });
+                        @Override
+                        public void onAnimationEnd(Animator animation) {
+                            viewGroup.removeView(touchIndicator);
+                        }
+                    });
+        }
     }
 
     private void showTouchCount(List<MotionEvent> motionEvents) {
-        touchCountIndicator.setText("" + motionEvents.size());
+        int pointerCount = Observable
+                .from(motionEvents)
+                .doOnNext(MotionEvent::recycle)
+                .scan(0, (integer, motionEvent) -> integer + motionEvent.getPointerCount())
+                .toBlocking()
+                .lastOrDefault(0);
+
+        touchCountIndicator.setText("" + motionEvents.size() + " " + pointerCount);
 
         touchCountIndicator
                 .animate()
