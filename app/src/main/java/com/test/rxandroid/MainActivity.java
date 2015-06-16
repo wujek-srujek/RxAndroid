@@ -102,30 +102,29 @@ public class MainActivity extends Activity {
     }
 
     private void showTouchCount(List<MotionEvent> motionEvents) {
-        int pointerCount = Observable
+        Observable
                 .from(motionEvents)
                 .doOnNext(MotionEvent::recycle)
-                .scan(0, (integer, motionEvent) -> integer + motionEvent.getPointerCount())
-                .toBlocking()
-                .lastOrDefault(0);
+                .reduce(0, (accumulator, motionEvent) -> accumulator + motionEvent.getPointerCount())
+                .subscribe(pointerCount -> {
+                    touchCountIndicator.setText("" + motionEvents.size() + " " + pointerCount);
 
-        touchCountIndicator.setText("" + motionEvents.size() + " " + pointerCount);
+                    touchCountIndicator
+                            .animate()
+                            .alpha(0F)
+                            .scaleXBy(15F)
+                            .scaleYBy(15F)
+                            .setDuration(1000L)
+                            .setListener(new AnimatorListenerAdapter() {
 
-        touchCountIndicator
-                .animate()
-                .alpha(0F)
-                .scaleXBy(15F)
-                .scaleYBy(15F)
-                .setDuration(1000L)
-                .setListener(new AnimatorListenerAdapter() {
-
-                    @Override
-                    public void onAnimationEnd(Animator animation) {
-                        touchCountIndicator.setText(null);
-                        touchCountIndicator.setAlpha(1F);
-                        touchCountIndicator.setScaleX(1F);
-                        touchCountIndicator.setScaleY(1F);
-                    }
+                                @Override
+                                public void onAnimationEnd(Animator animation) {
+                                    touchCountIndicator.setText(null);
+                                    touchCountIndicator.setAlpha(1F);
+                                    touchCountIndicator.setScaleX(1F);
+                                    touchCountIndicator.setScaleY(1F);
+                                }
+                            });
                 });
     }
 }
