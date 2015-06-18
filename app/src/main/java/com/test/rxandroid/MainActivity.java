@@ -59,7 +59,7 @@ public class MainActivity extends Activity {
         });
 
         ViewObservable
-                .bindView(viewGroup, touchPublishSubject)
+                .bindView(viewGroup, touchPublishSubject.onBackpressureDrop())
                 .filter(motionEvent -> {
                     int action = motionEvent.getActionMasked();
                     return action == MotionEvent.ACTION_DOWN
