@@ -67,7 +67,7 @@ public class MainActivity extends Activity {
                             || action == MotionEvent.ACTION_MOVE;
                 })
                 .doOnNext(this::showTouch)
-                .map(motionEvent -> MotionEvent.obtain(motionEvent))
+                .map(MotionEvent::obtain)
                 .buffer(3L, TimeUnit.SECONDS)
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(this::showTouchCount);
